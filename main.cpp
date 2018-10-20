@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include "Ping.h"
+#include "NewPing"
 
 //User configuration:
 int percent = 20;  //between -100 and 100, indicates how fast the motor
@@ -23,11 +24,15 @@ String driveState = "stationary";
 long ping(void);
 long microsecondsToCentimeters(long);
 void stationary(int);
+void stationary();
 void forward(int, int);
+void forward(int);
 void reverse(int, int);
+void reverse(int);
 
-Ping pingFront = Ping(1,2);     // ping object for front sensor
-
+Ping pingFront = Ping(11,12);     // ping object for front sensor
+Ping pingRear = Ping(9,10);     // ping object for rear ping sensor
+double distFront, distRear, lastDistFront, lastDistRear;
 
 void setup()    {
     Serial.begin(9600);
@@ -39,48 +44,58 @@ void setup()    {
 }
 
 void loop() {
+
     pingFront.fire();
-    int dist = pingFront.centimeters();
-    Serial.println(dist, DEC);
-    if(dist < 100)   {
-        stationary(2000);
+    delay(10);
+    pingRear.fire();
+    delay(10);
+    distFront = pingFront.centimeters();
+    distRear = pingRear.centimeters();
 
+    if((distFront - lastDistFront >= 50) || (lastDistFront - distFront >= 50))    {// if big difference between last and current read
+        distFront = pingFront.centimeters();                                    // read again
     }
-    else forward(20,1000);
 
-    delay(500);
-
-
-    //pingFront.fire();
-    //Serial.println(pingFront.centimeters());
-    /*
-    static int state = 1;
-    static unsigned long timeLast = 0;
-    static unsigned long timeNow = 0;
-
-    switch(state)   {
-        case 1:
-            pingFront.fire();
-            if (pingFront.centimeters() <= 100) {
-                stationary(2000);
-            }
-            else forward(20, 2000);
-            break;
-
-        case 2:
-
-            break;
-
+    if ((distRear - lastDistRear >= 50) || (lastDistRear - distRear >= 50)) {
+        distRear = pingRear.centimeters();
     }
-*/
+
+    Serial.print("Front: ");
+    Serial.println(distFront);
+    Serial.print("Rear: ");
+    Serial.println(distRear);
+
+    if (distFront < 100 && distRear < 100) {   // if we are sandwiched in
+        stationary();                           // STOP!
+        Serial.print("STOP!");
+        delay(3000);
+
+    } else if (distRear - distFront <= 10) {           //if we have an object behind us
+        forward(20);                            // and difference between front & back is 30cm,
+        Serial.println("Forwards");             // go forwards
+
+    } else if (distFront - distRear <=10) {           // if we have an object in front
+        reverse(-20);                            // go backwards
+        Serial.println("Reverse");
+    }
+    lastDistFront = distFront;      // save these for
+    lastDistRear = distRear;        // next time around
+
 }
 
 
-void stationary(int time)   {
-    for (int i = 0; i < arraySize; i++) {
-        controllers[i].writeMicroseconds(0);
+void forward(int percent)   {
+    int PWMvalue = percent * 5 + 1500;
+    for (int i=0; i< arraySize; i++)  {
+        controllers[i].writeMicroseconds(PWMvalue);
     }
-    delay(time);
+}
+
+void stationary()   {
+    int PWMvalue = 1500;
+    for (int i=0; i< arraySize; i++)  {
+        controllers[i].writeMicroseconds(PWMvalue);
+    }
 }
 
 void forward(int percent, int time) {
@@ -97,6 +112,13 @@ void forward(int percent, int time) {
     }
 }
 
+
+void reverse(int percent)   {
+    int PWMvalue = percent * 5 + 1500;
+    for (int i=0; i< arraySize; i++) {
+        controllers[i].writeMicroseconds(PWMvalue);
+    }
+}
 void reverse(int percent, int time) {
     timeNow = millis();
     driveState = "reverse";
@@ -107,25 +129,3 @@ void reverse(int percent, int time) {
     }
 
 }
-
-
-
-
-
-
-
-/*
-#include <Arduino.h>
-int ledPin = 13;
-
-void setup()    {
-    pinMode(ledPin, OUTPUT);
-}
-
-void loop() {
-    digitalWrite(ledPin, HIGH);
-    delay(500);
-    digitalWrite(ledPin, LOW);
-    delay(500);
-}
- */

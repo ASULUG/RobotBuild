@@ -24,9 +24,11 @@ void Ping::fire()   {
     digitalWrite(_trigPin, LOW);
     delayMicroseconds(2);
     digitalWrite(_trigPin, HIGH);
-    delayMicroseconds(10);
+    delayMicroseconds(5);
     digitalWrite(_trigPin, LOW);
     _duration = pulseIn(_echoPin, HIGH);
+    //Serial.print("Duration: ");
+    //Serial.println(_duration);
 }
 
 int Ping::microseconds()    {
@@ -35,7 +37,7 @@ int Ping::microseconds()    {
 
 double Ping::centimeters()   {
     if (_duration != -1)    {
-        return _duration / 29 + _cm / 2;
+        return _duration / 29 /2 ;//+ _cm / 2;
     }
     else return -1;
 
